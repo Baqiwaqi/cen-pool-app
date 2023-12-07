@@ -1,23 +1,17 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-// create a class that extends ChangeNotifier
-// the clas is for handle the state of the game
-// -  creating users
-// - start the game
-// - increment or decrement the a users score
-// - end the game
-// - reset the game
-
 class Game extends ChangeNotifier {
   String? id;
-  List<User> users;
+  List<User>? users;
   String? state;
   String? winner = "creating users";
 
   Game({
     this.id,
-    required this.users,
+    this.users,
     this.state,
     this.winner,
   });
@@ -29,15 +23,20 @@ class Game extends ChangeNotifier {
   }
 
   void addUser(User user) {
-    users.add(user);
+    users?.add(user);
+    notifyListeners();
+  }
+
+  void removeUser(User user) {
+    users?.remove(user);
     notifyListeners();
   }
 
   Future<void> incrementScore(User user) async {
     user.score++;
     try {
-      await games.doc(id).update({
-        'users': users.map((user) => {'name': user.name, 'score': user.score}),
+      await game.update({
+        'users': users?.map((user) => {'name': user.name, 'score': user.score}),
       });
       notifyListeners();
     } catch (e) {
@@ -48,8 +47,8 @@ class Game extends ChangeNotifier {
   Future<void> decrementScore(User user) async {
     user.score--;
     try {
-      await games.doc(id).update({
-        'users': users.map((user) => {'name': user.name, 'score': user.score}),
+      await game.update({
+        'users': users?.map((user) => {'name': user.name, 'score': user.score}),
       });
       notifyListeners();
     } catch (e) {
@@ -60,13 +59,29 @@ class Game extends ChangeNotifier {
   Future<void> startGame() async {
     state = 'playing';
     try {
-      final res = await games.add({
-        'users': users.map((user) => {'name': user.name, 'score': user.score}),
+      await game.update({
+        'users': users?.map((user) => {'name': user.name, 'score': user.score}),
         'state': state,
         'winner': winner,
       });
 
-      id = res.id;
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> clearGame() async {
+    state = 'creating users';
+    users = [];
+    winner = null;
+
+    try {
+      await game.update({
+        'users': users?.map((user) => {'name': user.name, 'score': user.score}),
+        'state': state,
+        'winner': winner,
+      });
       notifyListeners();
     } catch (e) {
       print(e);
@@ -76,8 +91,10 @@ class Game extends ChangeNotifier {
   Future<void> stopGame() async {
     state = 'stopped';
     try {
-      await games.doc(id).update({
+      await game.update({
+        'users': users?.map((user) => {'name': user.name, 'score': user.score}),
         'state': state,
+        'winner': winner,
       });
       notifyListeners();
     } catch (e) {
@@ -85,23 +102,26 @@ class Game extends ChangeNotifier {
     }
   }
 
-  CollectionReference<Map<String, dynamic>> games =
-      FirebaseFirestore.instance.collection('games');
+  DocumentReference<Map<String, dynamic>> game =
+      FirebaseFirestore.instance.collection('game').doc('playing');
 
-  Stream<List<Game>> getPlayingGames() {
-    return games
-        .where('state', isEqualTo: 'playing')
+  Stream<List<Game>> getGame() {
+    return FirebaseFirestore.instance
+        .collection('game')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => Game(
-                  id: doc.id,
-                  users: (doc.data()['users'] as List<dynamic>)
-                      .map((user) => User(user['name'], user['score']))
-                      .toList(),
-                  state: doc.data()['state'],
-                  winner: doc.data()['winner'],
-                ))
-            .toList());
+        .map((snapshots) {
+      return snapshots.docs.map((snapshot) {
+        final data = snapshot.data();
+        return Game(
+          id: snapshot.id,
+          users: (data['users'] as List<dynamic>)
+              .map((user) => User(user['name'], user['score']))
+              .toList(),
+          state: data['state'],
+          winner: data['winner'],
+        );
+      }).toList();
+    });
   }
 }
 
