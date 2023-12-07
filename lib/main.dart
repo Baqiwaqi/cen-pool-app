@@ -1,13 +1,24 @@
 import 'package:app/firebase_options.dart';
 import 'package:app/module/counter.dart';
+import 'package:app/module/game.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(providers: [
+      StreamProvider<List<Game>>(
+        create: (context) => Game(users: []).getPlayingGames(),
+        initialData: const [],
+      ),
+      ChangeNotifierProvider(create: (context) => Game(users: [])),
+      ChangeNotifierProvider(create: (context) => Counter()),
+    ], child: const MyApp()),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -30,8 +41,6 @@ class MyApp extends StatelessWidget {
 class Home extends StatelessWidget {
   Home({super.key});
 
-  final counter = Counter();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,15 +55,46 @@ class Home extends StatelessWidget {
             const Text(
               'You have pushed the button this many times:',
             ),
-            ListenableBuilder(
-                listenable: counter,
-                builder: (BuildContext context, Widget? child) {
-                  return Text(
-                    '${counter.count}',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  );
-                }),
-            // button
+            // consumer for reading the current playing game
+            Consumer(builder: (context, List<Game> games, child) {
+              print(games);
+
+              return Column(
+                children: games
+                    .map((game) => Column(
+                          children: [
+                            Text(
+                              ' ${game.state} ${game.winner ?? ''}',
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+
+                            //  display user and display score
+                            Column(
+                              children: game.users
+                                  .map((user) =>
+                                      Text('${user.name} ${user.score}'))
+                                  .toList(),
+                            ),
+                          ],
+                        ))
+                    .toList(),
+              );
+            }),
+
+            Consumer(builder: (context, Game game, child) {
+              // display created users
+              return Column(
+                children: game.users
+                    .map((user) => Text('${user.name} ${user.score}'))
+                    .toList(),
+              );
+            }),
+            Consumer(builder: (context, Counter counter, child) {
+              return Text(
+                '${counter.count}',
+                style: Theme.of(context).textTheme.headlineMedium,
+              );
+            }),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).push(
@@ -72,13 +112,13 @@ class Home extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
-            onPressed: () => {counter.decrement()},
+            onPressed: () => {context.read<Counter>().decrement()},
             tooltip: 'Decrement',
             child: const Icon(Icons.remove),
           ),
           const SizedBox(width: 10),
           FloatingActionButton(
-            onPressed: () => {counter.increment()},
+            onPressed: () => {context.read<Counter>().increment()},
             tooltip: 'Increment',
             child: const Icon(Icons.add),
           ),
@@ -88,8 +128,22 @@ class Home extends StatelessWidget {
   }
 }
 
-class SecondPage extends StatelessWidget {
+class SecondPage extends StatefulWidget {
   const SecondPage({super.key});
+
+  @override
+  State<SecondPage> createState() => _SecondPageState();
+}
+
+class _SecondPageState extends State<SecondPage> {
+  final myController = TextEditingController();
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is disposed.
+    myController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +155,118 @@ class SecondPage extends StatelessWidget {
         child: Column(
           children: [
             const Text('This is the second page'),
+
+            // consumer for reading the current playing game
+            Consumer(builder: (context, List<Game> games, child) {
+              return Column(
+                children: games
+                    .map((game) => Column(
+                          children: [
+                            Text(
+                              ' ${game.state} ${game.winner ?? ''}',
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+
+                            //  display user and display score
+                            Column(
+                              children: game.users
+                                  .map((user) => Row(
+                                        children: [
+                                          ElevatedButton(
+                                              onPressed: () => {
+                                                    game.decrementScore(user),
+                                                  },
+                                              child: const Text('-')),
+                                          Text('${user.name} ${user.score}'),
+                                          ElevatedButton(
+                                            onPressed: () => {
+                                              game.incrementScore(user),
+                                            },
+                                            child: const Text('+'),
+                                          ),
+                                        ],
+                                      ))
+                                  .toList(),
+                            ),
+                          ],
+                        ))
+                    .toList(),
+              );
+            }),
+
+            Consumer(builder: (context, Game game, child) {
+              if (game.state == 'playing') {
+                return Column(
+                  children: game.users
+                      .map((user) => Row(
+                            children: [
+                              Text('${user.name} ${user.score}'),
+                              ElevatedButton(
+                                onPressed: () => {
+                                  context.read<Game>().incrementScore(user),
+                                },
+                                child: const Text('+'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => {
+                                  context.read<Game>().decrementScore(user),
+                                },
+                                child: const Text('-'),
+                              ),
+                            ],
+                          ))
+                      .toList(),
+                );
+              }
+              // display created users
+              return Column(
+                children: game.users
+                    .map((user) => Text('${user.name} ${user.score}'))
+                    .toList(),
+              );
+            }),
+            Container(
+              padding: const EdgeInsets.all(10),
+              width: 300,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Enter your username',
+                      ),
+                      controller: myController,
+                      onChanged: (text) {
+                        context.read<Game>().setUserName(text);
+                      },
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => {
+                      context.read<Game>().addUser(User(myController.text, 0)),
+                      myController.clear(),
+                    },
+                    child: const Text('Add user'),
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => {
+                if (context.read<Game>().state == 'playing')
+                  context.read<Game>().stopGame()
+                else
+                  context.read<Game>().startGame(),
+              },
+              child: Text(
+                context.watch<Game>().state == 'playing'
+                    ? 'Stop game'
+                    : 'Start game',
+              ),
+            ),
             ElevatedButton(
                 onPressed: () => {Navigator.of(context).pop()},
                 child: const Text("GO BACK"))
