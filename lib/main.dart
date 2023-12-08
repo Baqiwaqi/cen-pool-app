@@ -1,9 +1,12 @@
 import 'package:app/firebase_options.dart';
 import 'package:app/module/game.dart';
+import 'package:app/theme/theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:responsive_framework/breakpoint.dart';
+import 'package:responsive_framework/responsive_breakpoints.dart';
 
 Future<void> main() async {
   await Firebase.initializeApp(
@@ -33,10 +36,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
-        useMaterial3: true,
-      ),
+      theme: theme,
       home: const Home(),
     );
   }
@@ -48,120 +48,201 @@ class Home extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppBar(
-        title: const Text('Home'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SecondPage()),
-              ),
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // consumer for reading the current playing game
-            Consumer<List<Game>>(builder: (context, List<Game> games, child) {
-              if (games.isEmpty) {
-                return const Text("loading");
-              }
-
-              Game game = games[0];
-
-              if (game.state == 'winner') {
-                return Column(
-                  children: [
-                    Text(
-                      ' ${game.state} ${game.winner ?? ''}',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    Column(
-                      children: game.users!
-                          .map((user) => Text('${user.name} ${user.score}'))
-                          .toList(),
-                    ),
-                  ],
-                );
-              }
-
-              if (game.state == 'playing') {
-                return Column(
-                  children: [
-                    Text(
-                      ' ${game.state} ${game.winner ?? ''}',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    Column(
-                      children: game.users!
-                          .map(
-                            (user) => Container(
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 10,
-                              ),
-                              width: 300,
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium,
-                                    user.name,
-                                  ),
-                                  Text(
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineMedium,
-                                    user.score.toString(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                );
-              }
-
-              if (game.state == 'creating users' || game.state == null) {
-                return Column(
-                  children: [
-                    Text(
-                      'Creating users',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    Column(
-                      children: game.users!
-                          .map(
-                            (user) => Text(
-                                style:
-                                    Theme.of(context).textTheme.headlineMedium,
-                                user.name),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                );
-              }
-
-              return const Text('Game is not playing');
-            }),
+        backgroundColor: Theme.of(context).colorScheme.background,
+        appBar: AppBar(
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.arrow_forward),
+              onPressed: () => {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SecondPage()),
+                ),
+              },
+            ),
           ],
         ),
-      ),
-    );
+        body: ResponsiveBreakpoints.builder(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                // consumer for reading the current playing game
+                Consumer<List<Game>>(
+                    builder: (context, List<Game> games, child) {
+                  if (games.isEmpty) {
+                    return const Text("loading");
+                  }
+
+                  Game game = games[0];
+
+                  if (game.state == 'winner') {
+                    return Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Theme.of(context).colorScheme.primary,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(context).colorScheme.secondary,
+                              ],
+                            ),
+                            backgroundBlendMode: BlendMode.softLight,
+                          ),
+                          alignment: Alignment.center,
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          child: Text(
+                            '${game.state?.toUpperCase()} ${game.winner?.toUpperCase() ?? ''}',
+                            style: ResponsiveBreakpoints.of(context).isDesktop
+                                ? Theme.of(context).textTheme.displayLarge
+                                : Theme.of(context).textTheme.headlineLarge,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  if (game.state == 'playing') {
+                    return Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Theme.of(context).colorScheme.primary,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(context).colorScheme.secondary,
+                              ],
+                            ),
+                            backgroundBlendMode: BlendMode.softLight,
+                          ),
+                          alignment: Alignment.center,
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          child: Text(
+                            '${game.state?.toUpperCase()}',
+                            style: ResponsiveBreakpoints.of(context).isDesktop
+                                ? Theme.of(context).textTheme.displayLarge
+                                : Theme.of(context).textTheme.headlineLarge,
+                          ),
+                        ),
+                        Column(
+                          children: game.users!
+                              .map((user) => Container(
+                                    margin: const EdgeInsets.only(top: 20),
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    width: 300,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium,
+                                            user.name[0].toUpperCase() +
+                                                user.name.substring(1)),
+                                        Text(
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineMedium,
+                                          user.score.toString(),
+                                        ),
+                                      ],
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                    );
+                  }
+
+                  if (game.state == 'creating users' || game.state == null) {
+                    return Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Theme.of(context).colorScheme.primary,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(context).colorScheme.primary,
+                                Theme.of(context).colorScheme.secondary,
+                              ],
+                            ),
+                            backgroundBlendMode: BlendMode.softLight,
+                          ),
+                          alignment: Alignment.center,
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          child: Text(
+                            '${game.state?.toUpperCase()}',
+                            style: ResponsiveBreakpoints.of(context).isDesktop
+                                ? Theme.of(context).textTheme.displayLarge
+                                : Theme.of(context).textTheme.headlineLarge,
+                          ),
+                        ),
+                        Column(
+                          children: game.users!
+                              .map((user) => Container(
+                                    margin: const EdgeInsets.only(top: 20),
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    width: 300,
+                                    child: Text(
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineMedium,
+                                        user.name[0].toUpperCase() +
+                                            user.name.substring(1)),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return const Text('Game is not playing');
+                }),
+              ],
+            ),
+          ),
+          breakpoints: [
+            const Breakpoint(start: 0, end: 450, name: MOBILE),
+            const Breakpoint(start: 451, end: 800, name: TABLET),
+            const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+            const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+          ],
+        ));
   }
 }
 
@@ -230,63 +311,69 @@ class _SecondPageState extends State<SecondPage> {
               }
 
               if (game.state == 'playing') {
-                return Column(
-                  children: [
-                    Column(
-                      children: game.users!
-                          .map((user) => Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () => {
-                                      game.decrementScore(user),
-                                    },
-                                    child: const Icon(Icons.remove),
-                                  ),
-                                  Container(
-                                    alignment: Alignment.center,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 10,
+                return SizedBox(
+                  // full height
+                  height: MediaQuery.of(context).size.height - 100,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Column(
+                        children: game.users!
+                            .map((user) => Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () => {
+                                        game.decrementScore(user),
+                                      },
+                                      child: const Icon(Icons.remove),
                                     ),
-                                    width: 300,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headlineMedium,
-                                          user.name,
-                                        ),
-                                        Text(
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .headlineMedium,
-                                          user.score.toString(),
-                                        ),
-                                      ],
+                                    Container(
+                                      width: 200,
+                                      alignment: Alignment.center,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 10,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium,
+                                            user.name,
+                                          ),
+                                          Text(
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineMedium,
+                                            user.score.toString(),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () => {
-                                      game.incrementScore(user),
-                                    },
-                                    child: const Icon(Icons.add),
-                                  ),
-                                ],
-                              ))
-                          .toList(),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => {
-                        game.clearGame(),
-                      },
-                      child: const Text('Clear game'),
-                    ),
-                  ],
+                                    ElevatedButton(
+                                      onPressed: () => {
+                                        game.incrementScore(user),
+                                      },
+                                      child: const Icon(Icons.add),
+                                    ),
+                                  ],
+                                ))
+                            .toList(),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => {
+                          game.clearGame(),
+                        },
+                        child: const Text('Clear game'),
+                      ),
+                    ],
+                  ),
                 );
               }
 
