@@ -6,15 +6,30 @@ import 'package:flutter/material.dart';
 class Game extends ChangeNotifier {
   String? id;
   List<User>? users;
-  String? state;
-  String? winner = "creating users";
+  String? state = 'creating users';
+  String? winner;
+  int? winningScore = 10;
 
   Game({
     this.id,
     this.users,
     this.state,
     this.winner,
+    this.winningScore,
   });
+
+  // winning score setter
+  void setWinningScore(int score) {
+    try {
+      winningScore = score;
+      docRef.update({
+        'winningScore': winningScore,
+      });
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    }
+  }
 
   String userName = '';
   void setUserName(String name) {
@@ -23,19 +38,42 @@ class Game extends ChangeNotifier {
   }
 
   void addUser(User user) {
-    users?.add(user);
-    notifyListeners();
+    try {
+      users?.add(user);
+      docRef.update({
+        'users': users?.map((user) => {'name': user.name, 'score': user.score}),
+      });
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    }
   }
 
   void removeUser(User user) {
     users?.remove(user);
+    docRef.update({
+      'users': users?.map((user) => {'name': user.name, 'score': user.score}),
+    });
     notifyListeners();
   }
 
   Future<void> incrementScore(User user) async {
-    user.score++;
     try {
-      await game.update({
+      user.score++;
+
+      if (user.score == winningScore) {
+        winner = user.name;
+        state = 'winner';
+        notifyListeners();
+        return await docRef.update({
+          'users':
+              users?.map((user) => {'name': user.name, 'score': user.score}),
+          'state': state,
+          'winner': winner,
+        });
+      }
+
+      await docRef.update({
         'users': users?.map((user) => {'name': user.name, 'score': user.score}),
       });
       notifyListeners();
@@ -47,7 +85,7 @@ class Game extends ChangeNotifier {
   Future<void> decrementScore(User user) async {
     user.score--;
     try {
-      await game.update({
+      await docRef.update({
         'users': users?.map((user) => {'name': user.name, 'score': user.score}),
       });
       notifyListeners();
@@ -59,12 +97,29 @@ class Game extends ChangeNotifier {
   Future<void> startGame() async {
     state = 'playing';
     try {
-      await game.update({
+      await docRef.update({
         'users': users?.map((user) => {'name': user.name, 'score': user.score}),
         'state': state,
         'winner': winner,
       });
 
+      notifyListeners();
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  Future<void> resetGame() async {
+    try {
+      state = 'creating users';
+      users = users?.map((user) => User(user.name, 0)).toList();
+      winner = null;
+
+      await docRef.update({
+        'users': users?.map((user) => {'name': user.name, 'score': user.score}),
+        'state': state,
+        'winner': winner,
+      });
       notifyListeners();
     } catch (e) {
       print(e);
@@ -77,7 +132,7 @@ class Game extends ChangeNotifier {
     winner = null;
 
     try {
-      await game.update({
+      await docRef.update({
         'users': users?.map((user) => {'name': user.name, 'score': user.score}),
         'state': state,
         'winner': winner,
@@ -91,7 +146,7 @@ class Game extends ChangeNotifier {
   Future<void> stopGame() async {
     state = 'stopped';
     try {
-      await game.update({
+      await docRef.update({
         'users': users?.map((user) => {'name': user.name, 'score': user.score}),
         'state': state,
         'winner': winner,
@@ -102,8 +157,7 @@ class Game extends ChangeNotifier {
     }
   }
 
-  DocumentReference<Map<String, dynamic>> game =
-      FirebaseFirestore.instance.collection('game').doc('playing');
+  final docRef = FirebaseFirestore.instance.collection('game').doc('playing');
 
   Stream<List<Game>> getGame() {
     return FirebaseFirestore.instance
@@ -119,6 +173,7 @@ class Game extends ChangeNotifier {
               .toList(),
           state: data['state'],
           winner: data['winner'],
+          winningScore: data['winningScore'],
         );
       }).toList();
     });
